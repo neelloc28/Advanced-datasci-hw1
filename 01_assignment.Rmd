@@ -194,9 +194,6 @@ hotels_testing <- testing(hotels_split)
 
 * Set up the recipe with `is_canceled` as the outcome and all other variables as predictors (HINT: `~.`).  
 * Use a `step_XXX()` function or functions (I think there are other ways to do this, but I found `step_mutate_at()` easiest) to create some indicator variables for the fol`lowing variables: `children`, `babies`, and `previous_cancellations`. So, the new variable should be a 1 if the original is more than 0 and 0 otherwise. Make sure you do this in a way that accounts for values that may be larger than any we see in the dataset.  
-
-#are these supposed to be numeric or categorical?
-
 * For the `agent` and `company` variables, make new indicator variables that are 1 if they have a value of `NULL` and 0 otherwise. 
 * Use `fct_lump_n()` to lump together countries that aren't in the top 5 most occurring. 
 * If you used new names for some of the new variables you created, then remove any variables that are no longer needed. 
@@ -231,13 +228,13 @@ hotels_recipe %>%
 ```{r}
 hotels_lasso_mod <-
   # Define a LASSO model
-  linear_reg(mixture = 1) %>%
-  # Set the engine to "lm" (lm() function is used to fit model)
+  logistic_reg(mixture=1) %>%
+  # Set the engine
   set_engine("glmnet") %>%
   #parameters we will tune
   set_args(penalty = tune()) %>%
   # Set mode
-  set_mode("regression")
+  set_mode("classification")
 
 hotels_lasso_mod
 ```
@@ -280,12 +277,58 @@ hotels_lasso_tune <-
     resamples = hotels_cv,
     grid = penalty_grid
   )
+
+hotels_lasso_tune
+
+hotels_accuracy <- hotels_lasso_tune %>%
+  collect_metrics() %>%
+  filter(.metric == "accuracy")
+
+hotels_accuracy
+
+ggplot(hotels_accuracy, aes(x = penalty, y = mean)) +
+  geom_point() +
+  geom_line() +
+  scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10",scales::math_format(10^.x))) +
+  ggtitle("Accuracy over different penalties") +
+  ylab("accuracy")
+
+#select best tuning parameter (accuracy-wise)
+best_param_hotels <- hotels_lasso_tune %>%
+  select_best(metric = "accuracy")
+
+best_param_hotels
 ```
+
+Fitting the model with the best tuning parameter according to select_best
+```{r}
+#create workflow
+hotels_lasso_final_wf <- hotels_lasso_wf %>%
+  finalize_workflow(best_param_hotels)
+
+hotels_lasso_final_wf
+
+#fit to the training data
+hotels_lasso_final_mod <- hotels_lasso_final_wf %>%
+  fit(data = hotels_training)
+
+hotels_lasso_final_mod %>% 
+  pull_workflow_fit() %>% 
+  tidy() 
+```
+
+**Yes, some variables now have coefficients of zero: arrival_date_month_October, meal_FB, market_segment_Groups, market_segment_Undefined, distribution_channel_Undefined, assigned_room_type_L, and assigned_room_type_P.**
 
 
 7. Now that we have a model, let's evaluate it a bit more. All we have looked at so far is the cross-validated accuracy from the previous step. 
 
 * Create a variable importance graph. Which variables show up as the most important? Are you surprised?  
+```{r}
+
+```
+
 * Use the `last_fit()` function to fit the final model and then apply it to the testing data. Report the metrics from the testing data using the `collet_metrics()` function. How do they compare to the cross-validated metrics?
 * Use the `collect_predictions()` function to find the predicted probabilities and classes for the test data. Save this to a new dataset called `preds`. Then, use the `conf_mat()` function from `dials` (part of `tidymodels`) to create a confusion matrix showing the predicted classes vs. the true classes. What is the true positive rate (sensitivity)? What is the true negative rate (specificity)? See this [Wikipedia](https://en.wikipedia.org/wiki/Confusion_matrix) reference if you (like me) tend to forget these definitions.
 * Use the `preds` dataset you just created to create a density plot of the predicted probabilities of canceling (the variable is called `.pred_1`), filling by `is_canceled`. Use an `alpha = .5` and `color = NA` in the `geom_density()`. Answer these questions: a. What would this graph look like for a model with an accuracy that was close to 1? b. Our predictions are classified as canceled if their predicted probability of canceling is greater than .5. If we wanted to have a high true positive rate, should we make the cutoff for predicted as canceled higher or lower than .5? c. What happens to the true negative rate if we try to get a higher true positive rate? 
