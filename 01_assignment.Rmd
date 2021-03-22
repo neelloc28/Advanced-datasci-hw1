@@ -326,11 +326,54 @@ hotels_lasso_final_mod %>%
 
 * Create a variable importance graph. Which variables show up as the most important? Are you surprised?  
 ```{r}
-
+# Visualize variable importance
+hotels_lasso_final_mod %>% 
+  pull_workflow_fit() %>% 
+  vip()
 ```
 
-* Use the `last_fit()` function to fit the final model and then apply it to the testing data. Report the metrics from the testing data using the `collet_metrics()` function. How do they compare to the cross-validated metrics?
+**From the variable importance plot, we see that reserved_room_type_P, deposit_type_Non.Refund, and assigned_room_type_I are the top three most important predictors of canceling a reservation. I am not sure what room types P and I are, but I am not surprised that putting a non-refundable deposit down is a strong indicator for whether or not the booking got canceled (because people don't like to lose money so they may be less likely to cancel).  If room type indicated the size and number of beds, I could see it being a relevant predictor because people going on business trips (small bed, single room most likely) may be less likely to cancel.**
+
+* Use the `last_fit()` function to fit the final model and then apply it to the testing data. Report the metrics from the testing data using the `collect_metrics()` function. How do they compare to the cross-validated metrics?
+```{r}
+# Fit model with best tuning parameter(s) to training data and apply to test data
+hotels_lasso_test <- hotels_lasso_final_wf %>% 
+  last_fit(hotels_split)
+
+# Metrics for model applied to test data
+hotels_lasso_test %>% 
+  collect_metrics()
+
+#metrics for model applied to cv data
+hotels_lasso_tune %>%
+  collect_metrics()
+
+hotels_lasso_tune
+
+#comparing metrics
+ggplot(hotels_accuracy, aes(x = penalty, y = mean)) +
+  geom_point() +
+  geom_line() +
+  scale_x_log10(
+   breaks = scales::trans_breaks("log10", function(x) 10^x),
+   labels = scales::trans_format("log10",scales::math_format(10^.x))) +
+  ggtitle("Accuracy over different penalties") +
+  ylab("accuracy") +
+  geom_point(aes(x=0.0004641589, y = 0.8128256, col = "red")) +
+  labs(color = "Test data metric")
+```
+
+#how do they compare to the cross-validated metrics?
+
 * Use the `collect_predictions()` function to find the predicted probabilities and classes for the test data. Save this to a new dataset called `preds`. Then, use the `conf_mat()` function from `dials` (part of `tidymodels`) to create a confusion matrix showing the predicted classes vs. the true classes. What is the true positive rate (sensitivity)? What is the true negative rate (specificity)? See this [Wikipedia](https://en.wikipedia.org/wiki/Confusion_matrix) reference if you (like me) tend to forget these definitions.
+```{r}
+# predictions from testing data
+preds <- collect_predictions(hotels_lasso_test)
+preds
+#make a confusion matrix
+conf_mat(preds, .pred_class, is_canceled)
+```
+
 * Use the `preds` dataset you just created to create a density plot of the predicted probabilities of canceling (the variable is called `.pred_1`), filling by `is_canceled`. Use an `alpha = .5` and `color = NA` in the `geom_density()`. Answer these questions: a. What would this graph look like for a model with an accuracy that was close to 1? b. Our predictions are classified as canceled if their predicted probability of canceling is greater than .5. If we wanted to have a high true positive rate, should we make the cutoff for predicted as canceled higher or lower than .5? c. What happens to the true negative rate if we try to get a higher true positive rate? 
 
 8. Let's say that this model is going to be applied to bookings 14 days in advance of their arrival at each hotel, and someone who works for the hotel will make a phone call to the person who made the booking. During this phone call, they will try to assure that the person will be keeping their reservation or that they will be canceling in which case they can do that now and still have time to fill the room. How should the hotel go about deciding who to call? How could they measure whether it was worth the effort to do the calling? Can you think of another way they might use the model? 
