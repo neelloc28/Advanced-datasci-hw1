@@ -33,6 +33,8 @@ Read the [Quick Intro](https://advanced-ds-in-r.netlify.app/posts/2021-01-28-git
 
 **Task**: Below, post a link to your GitHub repository.
 
+https://github.com/neelloc28/Advanced-datasci-hw1.git
+
 
 ## Creating a website
 
@@ -43,9 +45,13 @@ Once you've chosen that, you might want to look through some of the other *Build
 
 **Tasks**:
 
-* Include a link to your website below. (If anyone does not want to post a website publicly, please talk to me and we will find a different solution).  
+* Include a link to your website below. (If anyone does not want to post a website publicly, please talk to me and we will find a different solution).
 
-* Listen to at least the first 20 minutes of "Building a Career in Data Science, Chapter 4: Building a Portfolio". Go to the main [podcast website](https://podcast.bestbook.cool/) and navigate to a podcast provider that works for you to find that specific episode. Write 2-3 sentences reflecting on what they discussed and why creating a website might be helpful for you.  
+[My website](https://colleenminnihan.netlify.app)
+
+* Listen to at least the first 20 minutes of "Building a Career in Data Science, Chapter 4: Building a Portfolio". Go to the main [podcast website](https://podcast.bestbook.cool/) and navigate to a podcast provider that works for you to find that specific episode. Write 2-3 sentences reflecting on what they discussed and why creating a website might be helpful for you.
+
+**Jacqueline and Emily mentioned how creating a portfolio (website) can serve multiple purposes, from motivating you to gain new skills, to getting you involved in the data science community, to helping you have something to show at a job interview.  I felt inspired to potentially pursue personal projects in the future when they suggested that you think of a question that genuinely interests you and take it from there (even if it doesn't specifically have to do with the industry you are in/hope to be in), because you can apply those skills you learn in other contexts. I think that creating a website will be helpful for me so that I can have a consolidated space that holds my projects, which will hopefully inspire me to continuously add to it over time.**
 
 * (Optional) Create an R package with your own customized `gpplot2` theme! Write a post on your website about why you made the choices you did for the theme. See the *Building an R package* and *Custom `ggplot2` themes* [resources](https://advanced-ds-in-r.netlify.app/resources.html). 
 
@@ -56,11 +62,104 @@ Read through and follow along with the [Machine Learning review with an intro to
 **Tasks**:
 
 1. Read about the hotel booking data, `hotels`, on the [Tidy Tuesday page](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-02-11/readme.md) it came from. There is also a link to an article from the original authors. The outcome we will be predicting is called `is_canceled`. 
+
   - Without doing any analysis, what are some variables you think might be predictive and why?  
+  
+  **I think that lead_time (days elapsed between entering the date of the booking into the PMS and the arrival date) might be predictive because those that are booked farther out ahead of time may be more likely to be cancelled (due to things coming up closer to the date of stay that would cause it to be cancelled).  I think previous_cancellations could be a predictor as well, because that may be a proxy for how reliable that customer is with committing to their booking.  I also think that children (number of children) could be a predictor because if there are no children (and if it's only one adult), then it may be more likely a business trip which isn't as flexible as, say, a family vacation.**
+  
   _ What are some problems that might exist with the data? You might think about how it was collected and who did the collecting.  
+  
+  **Since customers often change the number of people, length of stay, and preferred room type once they arrive to the hotel, the data may not capture the true distribution of these variables (since the dataset only represents a snapshot in time).  It also may be problematic that the data was only collected during summer months, when people are more likely to be on vacation (which could change their probability of cancelling versus if it was for work).**
+  
   - If we construct a model, what type of conclusions will be able to draw from it?  
   
-2. Create some exploratory plots or table summaries of the data, concentrating most on relationships with the response variable. Keep in mind the response variable is numeric, 0 or 1. You may want to make it categorical (you also may not). Be sure to also examine missing values or other interesting values.  
+  **If we construct a model, hopefully we will be able to tell what factors (about the person booking, as well as the hotel) may make the booking more likely to be cancelled.  I can see how this could be problematic if the model is put into use because it could potentially result in discrimination for who hotels allow to book (if the hotel deems them likely to cancel).**
+  
+2. Create some exploratory plots or table summaries of the data, concentrating most on relationships with the response variable. Keep in mind the response variable is numeric, 0 or 1. You may want to make it categorical (you also may not). Be sure to also examine missing values or other interesting values.
+
+```{r, eval = FALSE}
+#reading in the data
+hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
+
+#checking to see the distribution of cancelled vs. not cancelled reservations
+ggplot(hotels, aes(x = is_canceled)) +
+  geom_bar()
+
+#seeing if lead time impacts cancellation
+ggplot(hotels, aes(x= lead_time, y = is_canceled)) +
+  geom_bar(stat = 'identity') +
+  ggtitle("Days booked in advance vs. reservation cancelled")
+#hmm this doesn't help me a ton because maybe just more people book less in advance to begin with... Perhaps making this into a categorical variable (less than a week, a week to a month, etc.) would be more enlightening.
+
+ggplot(hotels, aes(x= children, y = is_canceled)) +
+  geom_bar(stat = 'identity')
+#perhaps would be more helpful to binarize (children Y/N)
+
+#make a new dataset that calculates the percent of cancellations w/in each subset of number of children
+children_perc <- hotels %>%
+  group_by(children) %>%
+  summarize(perc.cancel = sum(is_canceled==0)/sum(is_canceled==1))
+
+#I notice that there are some NA values and children=10, both of which seem a bit odd to me...
+ggplot(hotels, aes(x= children)) +
+  geom_histogram()
+
+ggplot(children_perc, aes(x=children, y = perc.cancel)) +
+  geom_bar(stat = 'identity') +
+  ggtitle("number of children and percent cancellation")
+
+#From this histogram, we can see that an overwhelming number of customers booked with 0 kids
+
+#binarizing previous cancellations
+hotels <- hotels %>%
+  mutate(previous_cancellations_bin = ifelse(previous_cancellations == 0, "no", ifelse(previous_cancellations > 0, "yes", NA)))
+
+ggplot(hotels, aes(x = previous_cancellations_bin)) +
+  geom_bar()
+#Also, there were barely any people who had a previous cancellation.
+```
+Distributions of the quantitative variables
+```{r}
+hotels %>% 
+  select(where(is.numeric)) %>% 
+  pivot_longer(cols = everything(),
+               names_to = "variable", 
+               values_to = "value") %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(vars(variable), 
+             scales = "free")
+
+#one weird spike in _date_day_of_?
+#most are very right-skewed or have the majority of values at 0 or 1 (ex. lead_time, booking_change, babies, adults)
+```
+
+Check the class of each variable:
+```{r}
+lapply(hotels, class)
+```
+
+None of the variables are categorical (or binary) at the moment, but ideally hotel, is_cancelled, stays variables, adults, children, meals, etc. should be.
+
+
+Now, let's examine the missing values in this dataset.
+```{r}
+gg_miss_var(hotels)
+#It looks as though children is the only variable with missing values, and there are only four missing values, so I don't think too many NAs is a problem in this dataset
+
+#downsize dataset to a few variables we may care most about
+hotels_small <- hotels %>%
+  select(hotel, is_canceled, lead_time, children, previous_cancellations, adults)
+  
+vis_miss(hotels_small)
+#looks like there are barely any missing values!
+
+ggplot(hotels_small, aes(x = children, y = as.factor(is_canceled))) +
+  geom_miss_point()
+#So all of the missing values in the children variable are reservations that were cancelled...
+```
+
+
 
 3. First, we will do a couple things to get the data ready, including making the outcome a factor (needs to be that way for logistic regression), removing the year variable and some reservation status variables, and removing missing values (not NULLs but true missing values). Split the data into a training and test set, stratifying on the outcome variable, `is_canceled`. Since we have a lot of data, we're going to split the data 50/50 between training and test. I have already `set.seed()` for you. Be sure to use `hotels_mod` in the splitting.
 
@@ -78,6 +177,19 @@ hotels_mod <- hotels %>%
 set.seed(494)
 ```
 
+Split data into training and testing (50/50)
+```{r}
+#randomly assign 50% of the data to training
+hotels_split <- initial_split(hotels_mod, prop = .5)
+
+hotels_split
+
+#training and testing datasets
+hotels_training <- training(hotels_split)
+hotels_testing <- testing(hotels_split)
+```
+
+
 4. In this next step, we are going to do the pre-processing. Usually, I won't tell you exactly what to do here, but for your first exercise, I'll tell you the steps. 
 
 * Set up the recipe with `is_canceled` as the outcome and all other variables as predictors (HINT: `~.`).  
@@ -88,6 +200,22 @@ set.seed(494)
 * Use `step_normalize()` to center and scale all the non-categorical predictor variables. (Do this BEFORE creating dummy variables. When I tried to do it after, I ran into an error - I'm still investigating why.)
 * Create dummy variables for all factors/categorical predictor variables (make sure you have `-all_outcomes()` in this part!!).  
 * Use the `prep()` and `juice()` functions to apply the steps to the training data just to check that everything went as planned.
+```{r}
+#for some reason doing fct_lump_n in the pipe gives me an error? So I'm just doing it for both datasets here so I don't forget
+hotels_training$country = fct_lump_n(hotels_training$country,n=5)
+hotels_testing$country = fct_lump_n(hotels_testing$country,n=5)
+
+hotels_recipe <- recipe(is_canceled ~ ., data = hotels_training) %>%
+  step_mutate(children = ifelse(children >= 0,1,0), babies = ifelse(babies >= 0,1,0), previous_cancellations = ifelse(previous_cancellations >= 0,1,0)) %>%
+  step_mutate(agent_bin = ifelse(is.null(agent), 1, 0), company_bin = ifelse(is.null(company),1,0)) %>%
+  step_rm(agent, company)
+
+class(hotels_training$country)
+
+hotels_training
+
+```
+
 
 5. In this step we will set up a LASSO model and workflow.
 
