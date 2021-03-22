@@ -230,7 +230,32 @@ hotels_recipe %>%
 **We would want to use LASSO instead of regular logistic regression to better avoid overfitting our model to the training dataset (thereby having it do poorly with the testing and other datasets).  LASSO assigns a penalty to less important coefficients to shrink them to zero.  The penalty ($\lambda$ can be from 0 to infinity) that minimizes the sum of the squared residuals is the one that LASSO chooses.**
 
 * Define the model type, set the engine, set the `penalty` argument to `tune()` as a placeholder, and set the mode.  
-* Create a workflow with the recipe and model.  
+```{r}
+hotels_lasso_mod <-
+  # Define a LASSO model
+  linear_reg(mixture = 1) %>%
+  # Set the engine to "lm" (lm() function is used to fit model)
+  set_engine("glmnet") %>%
+  #parameters we will tune
+  set_args(penalty = tune()) %>%
+  # Set mode
+  set_mode("regression")
+
+hotels_lasso_mod
+```
+
+* Create a workflow with the recipe and model. (combines the preprocessing and model definition steps)
+```{r}
+hotels_lasso_wf <-
+  #set up the workflow
+  workflow() %>%
+  #add the recipe
+  add_recipe(hotels_recipe) %>%
+  #add the modeling
+  add_model(hotels_lasso_mod)
+
+hotels_lasso_wf
+```
 
 6. In this step, we'll tune the model and fit the model using the best tuning parameter to the entire training dataset.
 
@@ -243,7 +268,20 @@ hotels_recipe %>%
 ```{r}
 set.seed(494) # for reproducibility
 
+#5-fold cross-validation
+hotels_cv <- vfold_cv(hotels_training, v = 5)
 
+#choose penalty parameter values
+penalty_grid <- grid_regular(penalty(), levels = 10)
+penalty_grid
+
+#fit the models with different tuning parameters to the different cross-validation sets
+hotels_lasso_tune <-
+  hotels_lasso_wf %>%
+  tune_grid(
+    resamples = hotels_cv,
+    grid = penalty_grid
+  )
 ```
 
 
