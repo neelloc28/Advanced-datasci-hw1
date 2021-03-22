@@ -194,6 +194,9 @@ hotels_testing <- testing(hotels_split)
 
 * Set up the recipe with `is_canceled` as the outcome and all other variables as predictors (HINT: `~.`).  
 * Use a `step_XXX()` function or functions (I think there are other ways to do this, but I found `step_mutate_at()` easiest) to create some indicator variables for the fol`lowing variables: `children`, `babies`, and `previous_cancellations`. So, the new variable should be a 1 if the original is more than 0 and 0 otherwise. Make sure you do this in a way that accounts for values that may be larger than any we see in the dataset.  
+
+#are these supposed to be numeric or categorical?
+
 * For the `agent` and `company` variables, make new indicator variables that are 1 if they have a value of `NULL` and 0 otherwise. 
 * Use `fct_lump_n()` to lump together countries that aren't in the top 5 most occurring. 
 * If you used new names for some of the new variables you created, then remove any variables that are no longer needed. 
@@ -206,20 +209,26 @@ hotels_training$country = fct_lump_n(hotels_training$country,n=5)
 hotels_testing$country = fct_lump_n(hotels_testing$country,n=5)
 
 hotels_recipe <- recipe(is_canceled ~ ., data = hotels_training) %>%
-  step_mutate(children = ifelse(children >= 0,1,0), babies = ifelse(babies >= 0,1,0), previous_cancellations = ifelse(previous_cancellations >= 0,1,0)) %>%
-  step_mutate(agent_bin = ifelse(is.null(agent), 1, 0), company_bin = ifelse(is.null(company),1,0)) %>%
-  step_rm(agent, company)
+  step_mutate(children = ifelse(children > 0,"1","0"), babies = ifelse(babies > 0,"1","0"), previous_cancellations = ifelse(previous_cancellations > 0,"1","0")) %>%
+  step_mutate(agent_null = ifelse(agent == 'NULL', "1", "0"), company_null = ifelse(company=='NULL',"1","0")) %>%
+  step_rm(agent, company) %>%
+  step_normalize(all_predictors(),-all_nominal()) %>% #numeric variables will now have standard deviation of 1 and mean of zero
+  step_dummy(all_nominal(),-all_outcomes())
 
-class(hotels_training$country)
 
-hotels_training
-
+#using prep and juice to make sure everything went as planned
+hotels_recipe %>%
+  prep(hotels_training) %>%
+  juice()
 ```
 
 
 5. In this step we will set up a LASSO model and workflow.
 
-* In general, why would we want to use LASSO instead of regular logistic regression? (HINT: think about what happens to the coefficients).  
+* In general, why would we want to use LASSO instead of regular logistic regression? (HINT: think about what happens to the coefficients).
+
+**We would want to use LASSO instead of regular logistic regression to better avoid overfitting our model to the training dataset (thereby having it do poorly with the testing and other datasets).  LASSO assigns a penalty to less important coefficients to shrink them to zero.  The penalty ($\lambda$ can be from 0 to infinity) that minimizes the sum of the squared residuals is the one that LASSO chooses.**
+
 * Define the model type, set the engine, set the `penalty` argument to `tune()` as a placeholder, and set the mode.  
 * Create a workflow with the recipe and model.  
 
