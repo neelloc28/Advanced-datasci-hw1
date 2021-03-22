@@ -204,13 +204,11 @@ hotels_testing <- testing(hotels_split)
 * Create dummy variables for all factors/categorical predictor variables (make sure you have `-all_outcomes()` in this part!!).  
 * Use the `prep()` and `juice()` functions to apply the steps to the training data just to check that everything went as planned.
 ```{r}
-#for some reason doing fct_lump_n in the pipe gives me an error? So I'm just doing it for both datasets here so I don't forget
-hotels_training$country = fct_lump_n(hotels_training$country,n=5)
-hotels_testing$country = fct_lump_n(hotels_testing$country,n=5)
 
 hotels_recipe <- recipe(is_canceled ~ ., data = hotels_training) %>%
-  step_mutate(children = ifelse(children > 0,"1","0"), babies = ifelse(babies > 0,"1","0"), previous_cancellations = ifelse(previous_cancellations > 0,"1","0")) %>%
-  step_mutate(agent_null = ifelse(agent == 'NULL', "1", "0"), company_null = ifelse(company=='NULL',"1","0")) %>%
+  step_mutate(children = ifelse(children > 0,1,0), babies = ifelse(babies > 0,1,0), previous_cancellations = ifelse(previous_cancellations > 0,1,0)) %>%
+  step_mutate(agent_null = ifelse(agent == 'NULL', 1, 0), company_null = ifelse(company=='NULL',1,0)) %>%
+  step_mutate(country = fct_lump_n(country,n=5)) %>%
   step_rm(agent, company) %>%
   step_normalize(all_predictors(),-all_nominal()) %>% #numeric variables will now have standard deviation of 1 and mean of zero
   step_dummy(all_nominal(),-all_outcomes())
