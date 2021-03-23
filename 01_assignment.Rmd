@@ -374,7 +374,27 @@ preds
 conf_mat(preds, .pred_class, is_canceled)
 ```
 
-* Use the `preds` dataset you just created to create a density plot of the predicted probabilities of canceling (the variable is called `.pred_1`), filling by `is_canceled`. Use an `alpha = .5` and `color = NA` in the `geom_density()`. Answer these questions: a. What would this graph look like for a model with an accuracy that was close to 1? b. Our predictions are classified as canceled if their predicted probability of canceling is greater than .5. If we wanted to have a high true positive rate, should we make the cutoff for predicted as canceled higher or lower than .5? c. What happens to the true negative rate if we try to get a higher true positive rate? 
+* Use the `preds` dataset you just created to create a density plot of the predicted probabilities of canceling (the variable is called `.pred_1`), filling by `is_canceled`. Use an `alpha = .5` and `color = NA` in the `geom_density()`.
+```{r}
+ggplot(preds, aes(x = .pred_1, fill = is_canceled)) +
+  geom_density(alpha = 0.5, color = NA) +
+  ggtitle("Predicted probabilities of cancelling (test data)")
+```
+
+
+Answer these questions:
+
+a. What would this graph look like for a model with an accuracy that was close to 1?
+
+**A model with an accuracy that was close to 1 would have densities almost solely at x-axis values of 0 and 1.** ??
+
+b. Our predictions are classified as canceled if their predicted probability of canceling is greater than .5. If we wanted to have a high true positive rate, should we make the cutoff for predicted as canceled higher or lower than .5?
+
+**If we wanted a high true positive rate (correctly predicting cancelled reservations as cancelled) then we would want to make the cutoff for "predicted as cancelled" lower than 0.5 because that would assign more predicted probabilities to cancelled=yes.**
+
+c. What happens to the true negative rate if we try to get a higher true positive rate?
+
+**If we try to get a true positive rate, the true negative rate will subsequently be lower because we are classifying more reservations as "cancelled" which thereby classifies less as "not cancelled".**
 
 8. Let's say that this model is going to be applied to bookings 14 days in advance of their arrival at each hotel, and someone who works for the hotel will make a phone call to the person who made the booking. During this phone call, they will try to assure that the person will be keeping their reservation or that they will be canceling in which case they can do that now and still have time to fill the room. How should the hotel go about deciding who to call? How could they measure whether it was worth the effort to do the calling? Can you think of another way they might use the model? 
 
