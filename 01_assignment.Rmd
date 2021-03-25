@@ -56,6 +56,33 @@ Once you've chosen that, you might want to look through some of the other *Build
 
 * (Optional) Create an R package with your own customized `gpplot2` theme! Write a post on your website about why you made the choices you did for the theme. See the *Building an R package* and *Custom `ggplot2` themes* [resources](https://advanced-ds-in-r.netlify.app/resources.html). 
 
+**I ran into some errors that I couldn't figure out when trying to make my package, so I will just leave the theme here for now and try to troubleshoot adding it to an R package later.**
+```{r}
+theme_beachy <- function () {
+  theme_classic(base_size = 11, base_family = "Avenir") %+replace%
+    theme(panel.background = element_blank(), #removes white background
+          plot.background = element_rect(fill = "lightcyan1", color = NA), #change background to a pale blue
+          axis.line = element_line(size = 0.3), #thinning out axis lines
+          legend.position = c(0.9,0.95), #puts legend inside of plot
+          legend.box.background = element_rect(fill="transparent", colour= NA), #make legend box background
+          legend.box.margin = margin(6,6,6,6), #margin around legend
+          legend.justification = c("right","top"),
+          legend.box.just = "right",
+          legend.background = element_rect(linetype = 1, size = 0.3, color = "black", fill = "lightyellow")
+          
+            )
+}
+
+#example of the theme used on the hotels dataset
+
+ggplot(hotels, aes(x = meal, fill = as.factor(is_canceled))) +
+  geom_bar(position = "stack") +
+  ggtitle("Cancellations by meal type")+
+  theme_beachy() +
+  scale_fill_discrete(name = "Cancellation Status", breaks = c(0,1), labels = c("Didn't Cancel", "Canceled"))
+```
+
+
 ## Machine Learning review and intro to `tidymodels`
 
 Read through and follow along with the [Machine Learning review with an intro to the `tidymodels` package](https://advanced-ds-in-r.netlify.app/posts/2021-03-16-ml-review/) posted on the Course Materials page. 
@@ -66,33 +93,21 @@ Read through and follow along with the [Machine Learning review with an intro to
 
   - Without doing any analysis, what are some variables you think might be predictive and why?  
   
-  **I think that lead_time (days elapsed between entering the date of the booking into the PMS and the arrival date) might be predictive because those that are booked farther out ahead of time may be more likely to be cancelled (due to things coming up closer to the date of stay that would cause it to be cancelled).  I think previous_cancellations could be a predictor as well, because that may be a proxy for how reliable that customer is with committing to their booking.  I also think that children (number of children) could be a predictor because if there are no children (and if it's only one adult), then it may be more likely a business trip which isn't as flexible as, say, a family vacation.**
+  **I think that lead_time (days elapsed between entering the date of the booking into the PMS and the arrival date) might be predictive because the reservations that are booked farther out ahead of time may be more likely to be canceled (due to unanticipated things coming up closer to the date of stay that would cause it to be canceled).  I think previous_cancellations could be a predictor as well, because that may be a proxy for how reliable that customer is with committing to their booking.  I also think that children (number of children) could be a predictor because if there are no children (and if it's only one adult), then it may be more likely a business trip which isn't as flexible as, say, a family vacation.**
   
   _ What are some problems that might exist with the data? You might think about how it was collected and who did the collecting.  
   
-  **Since customers often change the number of people, length of stay, and preferred room type once they arrive to the hotel, the data may not capture the true distribution of these variables (since the dataset only represents a snapshot in time).  It also may be problematic that the data was only collected during summer months, when people are more likely to be on vacation (which could change their probability of cancelling versus if it was for work).**
+  **Since customers often change the number of people, length of stay, and preferred room type once they arrive to the hotel, the data may not capture the true distribution of these variables (since the dataset only represents a snapshot in time).  It also may be problematic that the data was only collected during summer months, when people are more likely to be on vacation (which could change their probability of canceling versus if it was for work).**
   
   - If we construct a model, what type of conclusions will be able to draw from it?  
   
-  **If we construct a model, hopefully we will be able to tell what factors (about the person booking, as well as the hotel) may make the booking more likely to be cancelled.  I can see how this could be problematic if the model is put into use because it could potentially result in discrimination for who hotels allow to book (if the hotel deems them likely to cancel).**
+  **If we construct a model, hopefully we will be able to tell what factors (about the person booking, as well as the hotel) may make the booking more likely to be canceled.  I can see how this could be problematic if the model is put into use because it could potentially result in discrimination for who hotels allow to book (if the hotel deems them likely to cancel).**
   
 2. Create some exploratory plots or table summaries of the variables in the dataset. Be sure to also examine missing values or other interesting values.
-```{r, eval = FALSE}
-#reading in the data
-hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
-
-#checking to see the distribution of cancelled vs. not cancelled reservations
+```{r}
+#checking to see the distribution of canceled vs. not canceled reservations
 ggplot(hotels, aes(x = is_canceled)) +
   geom_bar()
-
-#make a new dataset that calculates the percent of cancellations w/in each subset of number of children
-children_perc <- hotels %>%
-  group_by(children) %>%
-  summarize(perc.cancel = sum(is_canceled==0)/sum(is_canceled==1))
-
-#I notice that there are some NA values and children=10, both of which seem a bit odd to me...
-ggplot(hotels, aes(x= children)) +
-  geom_histogram()
 
 #binarizing previous cancellations
 hotels <- hotels %>%
@@ -100,7 +115,6 @@ hotels <- hotels %>%
 
 ggplot(hotels, aes(x = previous_cancellations_bin)) +
   geom_bar()
-#Also, there were barely any people who had a previous cancellation.
 ```
 Distributions of the quantitative variables
 ```{r}
@@ -113,10 +127,13 @@ hotels %>%
   geom_histogram() +
   facet_wrap(vars(variable), 
              scales = "free")
-
-#one weird spike in _date_day_of_?
-#most are very right-skewed or have the majority of values at 0 or 1 (ex. lead_time, booking_change, babies, adults)
 ```
+
+What I noticed:
+
+*One weird spike in arrival_date_day_of_month
+
+*Most are very right-skewed or have the majority of values at 0 or 1 (ex. lead_time, booking_change, babies, adults)
 
 Check the class of each variable:
 ```{r}
@@ -384,7 +401,7 @@ c. What happens to the true negative rate if we try to get a higher true positiv
 
 9. How might you go about questioning and evaluating the model in terms of fairness? Are there any questions you would like to ask of the people who collected the data? 
 
-Depending on how the model would be used in the future, I might challenge their pick of the putting a non-refundable deposit down variable to predict cancellations, because some people are financially or logistically unable to do so.  Therefore, if the model caused hotels to give them poorer treatment, that is unjust.  I would also like to ask the people who collected the data why they chose to use data from hotels in Portugal, and how much they think the results would change if you compared across different countries.
+**Depending on how the model would be used in the future, I might challenge their pick of the putting a non-refundable deposit down variable to predict cancellations, because some people are financially or logistically unable to do so.  Therefore, if the model caused hotels to give them poorer treatment, that is unjust.  I would also like to ask the people who collected the data why they chose to use data from hotels in Portugal, and how much they think the results would change if you compared across different countries.**
 
 
 
@@ -396,8 +413,8 @@ Listen to Dr. Rachel Thomas's  [Bias and Fairness lecture](https://ethics.fast.a
 * Why is it important that we pay attention to bias and fairness when studying data science?  
 * Is there a type of bias Dr. Thomas discussed that was new to you? Can you think about places you have seen these types of biases?
 
-Algorithmic bias is crucial to acknowledge because a biased algorithm can unjustly and permanently harm people peoples' lives.  Something I took away from this talk was the importance of examining accuracy on subgroups of the data, rather than just the accuracy of the algorithm as a whole.  It is quite angering that machine learning algorithms that were proven to be harmfully biased are still allowed to be used.  For example, even though the algorithm to predict recidivism had a high false positive rate for African American people and a high false negative rate for white people, Wisconsin still continued to use it.  I don't understand if it is just out of a desire for cost-effectiveness/ease/efficiency, lack of knowledge about the poor model performance, or something else.  It just feels so cruel, racist (even though race wasn't an input variable in that model), and unethical, and I am shocked that they were allowed to continue using it or that it even got put into use in the first place.
+**Algorithmic bias is crucial to acknowledge because a biased algorithm can unjustly and permanently harm people peoples' lives.  Something I took away from this talk was the importance of examining accuracy on subgroups of the data, rather than just the accuracy of the algorithm as a whole.  It is quite angering that machine learning algorithms that were proven to be harmfully biased are still allowed to be used.  For example, even though the algorithm to predict recidivism had a high false positive rate for African American people and a high false negative rate for white people, Wisconsin still continued to use it.  I don't understand if it is just out of a desire for cost-effectiveness/ease/efficiency, lack of knowledge about the poor model performance, or something else.  It just feels so cruel, racist (even though race wasn't an input variable in that model), and unethical, and I am shocked that they were allowed to continue using it or that it even got put into use in the first place.**
 
-Another takeaway from the lecture is the need to gather more representative datasets to train your algorithm on, but also realizing that many of these classification variables are social constructs to begin with (race, gender...) and is impossible to be 100% sure about from just looking at a picture of someone.
+**Another takeaway from the lecture is the need to gather more representative datasets to train your algorithm on, but also realizing that many of these classification variables are social constructs to begin with (race, gender...) and is impossible to be 100% sure about from just looking at a picture of someone.**
 
-Overall, it's really unfortunate that people are more likely to assume algorithms are less biased (at least, according to the talk) than people making the decisions because people are creating those algorithms in the first place. I would pose that people have the ability to be more nuanced than algorithms when they make decisions because ideally they can take a step back and acknowledge their biases before making snap judgements (or pausing to challenge their snap judgements) about people that can make or break their futures.
+**Overall, it's really unfortunate that people are more likely to assume algorithms are less biased (at least, according to the talk) than people making the decisions because people are creating those algorithms in the first place. I would pose that people have the ability to be more nuanced than algorithms when they make decisions because ideally they can take a step back and acknowledge their biases before making snap judgements (or pausing to challenge their snap judgements) about people that can make or break their futures.**
