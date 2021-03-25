@@ -1,5 +1,6 @@
 ---
 title: 'Assignment #1'
+author: 'Colleen Minnihan'
 output: 
   html_document:
     toc: true
@@ -75,8 +76,7 @@ Read through and follow along with the [Machine Learning review with an intro to
   
   **If we construct a model, hopefully we will be able to tell what factors (about the person booking, as well as the hotel) may make the booking more likely to be cancelled.  I can see how this could be problematic if the model is put into use because it could potentially result in discrimination for who hotels allow to book (if the hotel deems them likely to cancel).**
   
-2. Create some exploratory plots or table summaries of the data, concentrating most on relationships with the response variable. Keep in mind the response variable is numeric, 0 or 1. You may want to make it categorical (you also may not). Be sure to also examine missing values or other interesting values.
-
+2. Create some exploratory plots or table summaries of the variables in the dataset. Be sure to also examine missing values or other interesting values.
 ```{r, eval = FALSE}
 #reading in the data
 hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv')
@@ -84,16 +84,6 @@ hotels <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tid
 #checking to see the distribution of cancelled vs. not cancelled reservations
 ggplot(hotels, aes(x = is_canceled)) +
   geom_bar()
-
-#seeing if lead time impacts cancellation
-ggplot(hotels, aes(x= lead_time, y = is_canceled)) +
-  geom_bar(stat = 'identity') +
-  ggtitle("Days booked in advance vs. reservation cancelled")
-#hmm this doesn't help me a ton because maybe just more people book less in advance to begin with... Perhaps making this into a categorical variable (less than a week, a week to a month, etc.) would be more enlightening.
-
-ggplot(hotels, aes(x= children, y = is_canceled)) +
-  geom_bar(stat = 'identity')
-#perhaps would be more helpful to binarize (children Y/N)
 
 #make a new dataset that calculates the percent of cancellations w/in each subset of number of children
 children_perc <- hotels %>%
@@ -103,12 +93,6 @@ children_perc <- hotels %>%
 #I notice that there are some NA values and children=10, both of which seem a bit odd to me...
 ggplot(hotels, aes(x= children)) +
   geom_histogram()
-
-ggplot(children_perc, aes(x=children, y = perc.cancel)) +
-  geom_bar(stat = 'identity') +
-  ggtitle("number of children and percent cancellation")
-
-#From this histogram, we can see that an overwhelming number of customers booked with 0 kids
 
 #binarizing previous cancellations
 hotels <- hotels %>%
@@ -348,8 +332,6 @@ hotels_lasso_test %>%
 hotels_lasso_tune %>%
   collect_metrics()
 
-hotels_lasso_tune
-
 #comparing metrics
 ggplot(hotels_accuracy, aes(x = penalty, y = mean)) +
   geom_point() +
@@ -363,7 +345,7 @@ ggplot(hotels_accuracy, aes(x = penalty, y = mean)) +
   labs(color = "Test data metric")
 ```
 
-#how do they compare to the cross-validated metrics?
+**The accuracy of model applied to CV data with the best tuning parameter is SLIGHTLY lower than the accuracy of the model applied to the test data with the same tuning parameter.  We can see this in the plot, where the red dot (test data) is slightly higher than the black dot (training data).**
 
 * Use the `collect_predictions()` function to find the predicted probabilities and classes for the test data. Save this to a new dataset called `preds`. Then, use the `conf_mat()` function from `dials` (part of `tidymodels`) to create a confusion matrix showing the predicted classes vs. the true classes. What is the true positive rate (sensitivity)? What is the true negative rate (specificity)? See this [Wikipedia](https://en.wikipedia.org/wiki/Confusion_matrix) reference if you (like me) tend to forget these definitions.
 ```{r}
@@ -386,22 +368,23 @@ Answer these questions:
 
 a. What would this graph look like for a model with an accuracy that was close to 1?
 
-**A model with an accuracy that was close to 1 would have densities almost solely at x-axis values of 0 and 1.** ??
+**A model with an accuracy that was close to 1 would have densities almost solely at x-axis values of 0 and 1.**
 
 b. Our predictions are classified as canceled if their predicted probability of canceling is greater than .5. If we wanted to have a high true positive rate, should we make the cutoff for predicted as canceled higher or lower than .5?
 
-**If we wanted a high true positive rate (correctly predicting cancelled reservations as cancelled) then we would want to make the cutoff for "predicted as cancelled" lower than 0.5 because that would assign more predicted probabilities to cancelled=yes.**
+**If we wanted a high true positive rate (correctly predicting canceled reservations as canceled) then we would want to make the cutoff for "predicted as canceled" lower than 0.5 because that would assign more predicted probabilities to canceled=yes.**
 
 c. What happens to the true negative rate if we try to get a higher true positive rate?
 
-**If we try to get a true positive rate, the true negative rate will subsequently be lower because we are classifying more reservations as "cancelled" which thereby classifies less as "not cancelled".**
+**If we try to get a true positive rate, the true negative rate will subsequently be lower because we are classifying more reservations as "canceled" which thereby classifies less as "not canceled".**
 
-8. Let's say that this model is going to be applied to bookings 14 days in advance of their arrival at each hotel, and someone who works for the hotel will make a phone call to the person who made the booking. During this phone call, they will try to assure that the person will be keeping their reservation or that they will be canceling in which case they can do that now and still have time to fill the room. How should the hotel go about deciding who to call? How could they measure whether it was worth the effort to do the calling? Can you think of another way they might use the model? 
+8. Let's say that this model is going to be applied to bookings 14 days in advance of their arrival at each hotel, and someone who works for the hotel will make a phone call to the person who made the booking. During this phone call, they will try to assure that the person will be keeping their reservation or that they will be canceling in which case they can do that now and still have time to fill the room. How should the hotel go about deciding who to call? How could they measure whether it was worth the effort to do the calling? Can you think of another way they might use the model?
+
+**Hotels could use this model to call anyone whom the model predicted would cancel their reservation, to confirm that they still wanted the reservation.  They could measure whether pr not it was worth the effort to call by keeping track of the "true negatives" (people they called who actually were planning to cancel their reservation) and "false negatives" (people they called that the model predicted would cancel but weren't actually planning to cancel) and seeing if the model guessed right more often than it guessed incorrectly (to a significant degree).  Another way that this model could be used is to see who it predicts is NOT likely to cancel, and then sending them promotional material or catering to those people in some way to attempt to make them want to continue booking with that hotel company again.**
 
 9. How might you go about questioning and evaluating the model in terms of fairness? Are there any questions you would like to ask of the people who collected the data? 
 
-
-
+Depending on how the model would be used in the future, I might challenge their pick of the putting a non-refundable deposit down variable to predict cancellations, because some people are financially or logistically unable to do so.  Therefore, if the model caused hotels to give them poorer treatment, that is unjust.  I would also like to ask the people who collected the data why they chose to use data from hotels in Portugal, and how much they think the results would change if you compared across different countries.
 
 
 
@@ -413,4 +396,8 @@ Listen to Dr. Rachel Thomas's  [Bias and Fairness lecture](https://ethics.fast.a
 * Why is it important that we pay attention to bias and fairness when studying data science?  
 * Is there a type of bias Dr. Thomas discussed that was new to you? Can you think about places you have seen these types of biases?
 
+Algorithmic bias is crucial to acknowledge because a biased algorithm can unjustly and permanently harm people peoples' lives.  Something I took away from this talk was the importance of examining accuracy on subgroups of the data, rather than just the accuracy of the algorithm as a whole.  It is quite angering that machine learning algorithms that were proven to be harmfully biased are still allowed to be used.  For example, even though the algorithm to predict recidivism had a high false positive rate for African American people and a high false negative rate for white people, Wisconsin still continued to use it.  I don't understand if it is just out of a desire for cost-effectiveness/ease/efficiency, lack of knowledge about the poor model performance, or something else.  It just feels so cruel, racist (even though race wasn't an input variable in that model), and unethical, and I am shocked that they were allowed to continue using it or that it even got put into use in the first place.
 
+Another takeaway from the lecture is the need to gather more representative datasets to train your algorithm on, but also realizing that many of these classification variables are social constructs to begin with (race, gender...) and is impossible to be 100% sure about from just looking at a picture of someone.
+
+Overall, it's really unfortunate that people are more likely to assume algorithms are less biased (at least, according to the talk) than people making the decisions because people are creating those algorithms in the first place. I would pose that people have the ability to be more nuanced than algorithms when they make decisions because ideally they can take a step back and acknowledge their biases before making snap judgements (or pausing to challenge their snap judgements) about people that can make or break their futures.
